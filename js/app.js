@@ -51,31 +51,40 @@ document.addEventListener("DOMContentLoaded", () => {
   const difficulty = localStorage.getItem("difficulty") || "easy";
 
   // Restore saved state if available
-  const saved = StorageManager.load("sudokuState");
+  let saved = null;
+  try {
+    saved = StorageManager.load("sudokuState");
+  } catch (e) {
+    console.warn("Failed to load saved state:", e);
+  }
+
   let puzzle;
-  if (saved) {
-    puzzle = saved;
+  if (saved && saved.given && saved.solution) {
+    puzzle = { given: saved.given, solution: saved.solution };
   } else {
     puzzle = SudokuGenerator.generate(difficulty);
   }
 
   // Initialize game
   GameEngine.init(puzzle);
-  UIController.renderBoard(puzzle.given);
+
+  // Render board with given mask to distinguish pre-filled cells
+  UIController.renderBoard(GameEngine.board, puzzle.given);
 
   // Start timer
   TimerManager.start();
 
   // Keyboard input
   KeyboardHandler.init(document.getElementById("board"), (cell, val) => {
-    const index = [...cell.parentNode.children].indexOf(cell);
-    const row = Math.floor(index / 9);
-    const col = index % 9;
+    const row = parseInt(cell.dataset.row);
+    const col = parseInt(cell.dataset.col);
 
     const oldValue = GameEngine.board[row][col];
+
     if (val === null || Validator.isValidMove(GameEngine.board, row, col, val)) {
       GameEngine.board[row][col] = val;
       cell.textContent = val || "";
+      cell.classList.remove("cell-given");
       Animator.flash(cell, val ? "correct" : "");
       MoveRecorder.record(row, col, val, false, oldValue);
       ReplaySystem.recordMove({ row, col, value: val, oldValue });
@@ -92,25 +101,29 @@ document.addEventListener("DOMContentLoaded", () => {
     if (hint) {
       const index = hint.row * 9 + hint.col;
       const cell = document.getElementById("board").children[index];
+      const oldValue = GameEngine.board[hint.row][hint.col];
+      GameEngine.board[hint.row][hint.col] = hint.value;
       cell.textContent = hint.value;
+      cell.classList.remove("cell-given");
       Animator.flash(cell, "hint");
-      MoveRecorder.record(hint.row, hint.col, hint.value, false);
+      MoveRecorder.record(hint.row, hint.col, hint.value, false, oldValue);
       saveState();
     }
   };
 
   document.getElementById("undoBtn").onclick = () => {
+    if (MoveRecorder.history.length === 0) return;
     const last = MoveRecorder.history.pop();
     if (last) {
       GameEngine.board[last.row][last.col] = last.oldValue || null;
-      UIController.renderBoard(GameEngine.board);
+      UIController.renderBoard(GameEngine.board, puzzle.given);
       saveState();
     }
   };
 
   document.getElementById("solveBtn").onclick = () => {
     Solver.solve(GameEngine.board);
-    UIController.renderBoard(GameEngine.board);
+    UIController.renderBoard(GameEngine.board, puzzle.given);
     saveState();
   };
 
@@ -137,12 +150,16 @@ document.addEventListener("DOMContentLoaded", () => {
   window.addEventListener("beforeunload", saveState);
 
   function saveState() {
-    StorageManager.save("sudokuState", {
-      given: puzzle.given,
-      solution: puzzle.solution,
-      board: GameEngine.board,
-      difficulty,
-      history: MoveRecorder.history
-    });
+    try {
+      StorageManager.save("sudokuState", {
+        given: puzzle.given,
+        solution: puzzle.solution,
+        board: GameEngine.board,
+        difficulty,
+        history: MoveRecorder.history
+      });
+    } catch (e) {
+      console.warn("Failed to save state:", e);
+    }
   }
 });

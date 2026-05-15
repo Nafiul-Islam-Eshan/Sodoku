@@ -1,40 +1,20 @@
-
 import { Solver } from "./Solver.js";
 import { Helpers } from "../utils/helpers.js";
 
 export const SudokuGenerator = {
   generate(difficulty = "easy") {
     // Step 1: Generate a solved board
-    let board = this._generateSolvedBoard();
+    const solution = this._generateSolvedBoard();
 
-    // Step 2: Remove cells based on difficulty
+    // Step 2: Create puzzle by removing cells
     const clues = this._getClueCount(difficulty);
-    let puzzle = Helpers.clone(board);
+    const puzzle = this._createPuzzle(solution, clues);
 
-    let cellsToRemove = 81 - clues;
-    while (cellsToRemove > 0) {
-      const r = Math.floor(Math.random() * 9);
-      const c = Math.floor(Math.random() * 9);
-      if (puzzle[r][c] !== null) {
-        const backup = puzzle[r][c];
-        puzzle[r][c] = null;
-
-        // Ensure puzzle still solvable uniquely
-        let temp = Helpers.clone(puzzle);
-        let solved = Helpers.clone(temp);
-        if (!Solver.solve(solved)) {
-          puzzle[r][c] = backup; // revert if unsolvable
-        } else {
-          cellsToRemove--;
-        }
-      }
-    }
-
-    return { given: puzzle, solution: board };
+    return { given: puzzle, solution };
   },
 
   _generateSolvedBoard() {
-    let board = Array.from({ length: 9 }, () => Array(9).fill(null));
+    const board = Array.from({ length: 9 }, () => Array(9).fill(null));
     this._fillBoard(board);
     return board;
   },
@@ -72,19 +52,38 @@ export const SudokuGenerator = {
     for (let i = 0; i < 9; i++) {
       if (board[row][i] === val || board[i][col] === val) return false;
     }
-    const sr = Math.floor(row / 3) * 3, sc = Math.floor(col / 3) * 3;
-    for (let r = 0; r < 3; r++) for (let c = 0; c < 3; c++) {
-      if (board[sr + r][sc + c] === val) return false;
+    const sr = Math.floor(row / 3) * 3;
+    const sc = Math.floor(col / 3) * 3;
+    for (let r = 0; r < 3; r++) {
+      for (let c = 0; c < 3; c++) {
+        if (board[sr + r][sc + c] === val) return false;
+      }
     }
     return true;
   },
 
+  _createPuzzle(solution, clues) {
+    const puzzle = Helpers.clone(solution);
+    let cellsToRemove = 81 - clues;
+
+    while (cellsToRemove > 0) {
+      const r = Math.floor(Math.random() * 9);
+      const c = Math.floor(Math.random() * 9);
+
+      if (puzzle[r][c] !== null) {
+        puzzle[r][c] = null;
+        cellsToRemove--;
+      }
+    }
+    return puzzle;
+  },
+
   _getClueCount(difficulty) {
     switch (difficulty) {
-      case "easy": return 40;   // 40 clues
-      case "medium": return 34; // 34 clues
-      case "hard": return 28;   // 28 clues
-      case "expert": return 24; // 24 clues
+      case "easy": return 40;
+      case "medium": return 34;
+      case "hard": return 28;
+      case "expert": return 24;
       default: return 40;
     }
   }

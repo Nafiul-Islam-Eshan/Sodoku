@@ -26,4 +26,8 @@ body {
   text-align: center;
   border: 1px solid #ccc;
   font-size: 18px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }

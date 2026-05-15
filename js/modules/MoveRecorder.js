@@ -1,7 +1,6 @@
-
 export const MoveRecorder = {
   history: [],
-  record(row, col, value, wasMistake = false) {
-    this.history.push({ row, col, value, wasMistake, timestamp: Date.now() });
-  }
+  record(row, col, value, wasMistake = false, oldValue = null) {
+    this.history.push({ row, col, value, wasMistake, oldValue, timestamp: Date.now() });
+  },
 };
