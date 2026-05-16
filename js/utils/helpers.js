@@ -1,11 +1,15 @@
-
 export const Helpers = {
   clone(board) {
     return board.map(row => [...row]);
   },
 
   shuffle(array) {
-    return array.sort(() => Math.random() - 0.5);
+    const copy = [...array];
+    for (let i = copy.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [copy[i], copy[j]] = [copy[j], copy[i]];
+    }
+    return copy;
   },
 
   range(n) {

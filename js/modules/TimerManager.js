@@ -1,4 +1,3 @@
-
 export const TimerManager = {
   startTime: null,
   elapsed: 0,
@@ -9,7 +8,15 @@ export const TimerManager = {
     this.running = true;
   },
   stop() {
-    this.elapsed += performance.now() - this.startTime;
+    if (this.running && this.startTime !== null) {
+      this.elapsed += performance.now() - this.startTime;
+    }
+    this.running = false;
+    this.startTime = null;
+  },
+  reset() {
+    this.startTime = null;
+    this.elapsed = 0;
     this.running = false;
   },
   getTime() {

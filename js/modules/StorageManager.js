@@ -1,18 +1,22 @@
 export const StorageManager = {
   save(key, data) {
     try {
-      localStorage.setItem(key, JSON.stringify(data));
+      const json = JSON.stringify(data);
+      localStorage.setItem(key, json);
     } catch (e) {
-      console.warn("StorageManager.save failed:", e);
+      console.error("StorageManager save failed:", e);
     }
   },
   load(key) {
     try {
-      const raw = localStorage.getItem(key);
-      return raw ? JSON.parse(raw) : null;
+      const json = localStorage.getItem(key);
+      return json ? JSON.parse(json) : null;
     } catch (e) {
-      console.warn("StorageManager.load failed:", e);
+      console.error("StorageManager load failed:", e);
       return null;
     }
+  },
+  remove(key) {
+    localStorage.removeItem(key);
   }
 };

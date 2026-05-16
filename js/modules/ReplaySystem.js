@@ -1,4 +1,3 @@
-
 export const ReplaySystem = {
   moves: [],
   recordMove(move) {
@@ -8,8 +7,11 @@ export const ReplaySystem = {
     const temp = board.map(row => [...row]);
     for (let i = 0; i <= index; i++) {
       const m = this.moves[i];
-      temp[m.row][m.col] = m.value;
+      if (m) temp[m.row][m.col] = m.value;
     }
     return temp;
+  },
+  clear() {
+    this.moves = [];
   }
 };

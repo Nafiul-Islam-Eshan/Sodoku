@@ -4,17 +4,36 @@ import { Helpers } from "../utils/helpers.js";
 export const SudokuGenerator = {
   generate(difficulty = "easy") {
     // Step 1: Generate a solved board
-    const solution = this._generateSolvedBoard();
+    let board = this._generateSolvedBoard();
 
-    // Step 2: Create puzzle by removing cells
+    // Step 2: Remove cells based on difficulty
     const clues = this._getClueCount(difficulty);
-    const puzzle = this._createPuzzle(solution, clues);
+    let puzzle = Helpers.clone(board);
 
-    return { given: puzzle, solution };
+    let cellsToRemove = 81 - clues;
+    while (cellsToRemove > 0) {
+      const r = Math.floor(Math.random() * 9);
+      const c = Math.floor(Math.random() * 9);
+      if (puzzle[r][c] !== null) {
+        const backup = puzzle[r][c];
+        puzzle[r][c] = null;
+
+        // Ensure puzzle still solvable uniquely
+        let temp = Helpers.clone(puzzle);
+        let solved = Helpers.clone(temp);
+        if (!Solver.solve(solved)) {
+          puzzle[r][c] = backup; // revert if unsolvable
+        } else {
+          cellsToRemove--;
+        }
+      }
+    }
+
+    return { given: puzzle, solution: board };
   },
 
   _generateSolvedBoard() {
-    const board = Array.from({ length: 9 }, () => Array(9).fill(null));
+    let board = Array.from({ length: 9 }, () => Array(9).fill(null));
     this._fillBoard(board);
     return board;
   },
@@ -29,7 +48,14 @@ export const SudokuGenerator = {
       return null;
     };
 
-    const shuffle = arr => arr.sort(() => Math.random() - 0.5);
+    const shuffle = arr => {
+      const copy = [...arr];
+      for (let i = copy.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [copy[i], copy[j]] = [copy[j], copy[i]];
+      }
+      return copy;
+    };
 
     const backtrack = () => {
       const empty = findEmpty();
@@ -52,30 +78,11 @@ export const SudokuGenerator = {
     for (let i = 0; i < 9; i++) {
       if (board[row][i] === val || board[i][col] === val) return false;
     }
-    const sr = Math.floor(row / 3) * 3;
-    const sc = Math.floor(col / 3) * 3;
-    for (let r = 0; r < 3; r++) {
-      for (let c = 0; c < 3; c++) {
-        if (board[sr + r][sc + c] === val) return false;
-      }
+    const sr = Math.floor(row / 3) * 3, sc = Math.floor(col / 3) * 3;
+    for (let r = 0; r < 3; r++) for (let c = 0; c < 3; c++) {
+      if (board[sr + r][sc + c] === val) return false;
     }
     return true;
-  },
-
-  _createPuzzle(solution, clues) {
-    const puzzle = Helpers.clone(solution);
-    let cellsToRemove = 81 - clues;
-
-    while (cellsToRemove > 0) {
-      const r = Math.floor(Math.random() * 9);
-      const c = Math.floor(Math.random() * 9);
-
-      if (puzzle[r][c] !== null) {
-        puzzle[r][c] = null;
-        cellsToRemove--;
-      }
-    }
-    return puzzle;
   },
 
   _getClueCount(difficulty) {

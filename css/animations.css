@@ -16,40 +16,17 @@
   100% { transform: translateX(0); }
 }
 
-/* Utility classes */
-.cell-correct {
-  animation: flash-green 0.3s ease;
+@keyframes pulse-solving {
+  0% { background-color: #e3f2fd; }
+  50% { background-color: #bbdefb; }
+  100% { background-color: #e3f2fd; }
 }
 
-.cell-mistake {
-  animation: flash-red 0.3s ease, shake 0.2s ease;
-}
-
-.cell-selected {
-  outline: 2px solid #2196f3;
-  transition: outline 0.2s ease;
-}
-
-.cell-hint-highlighted {
-  animation: flash-green 0.5s ease;
-}@keyframes flash-green {
-  0% { background-color: #c8e6c9; }
-  100% { background-color: transparent; }
-}
-
-@keyframes flash-red {
+@keyframes flash-backtrack {
   0% { background-color: #ffcdd2; }
   100% { background-color: transparent; }
 }
 
-@keyframes shake {
-  0% { transform: translateX(0); }
-  25% { transform: translateX(-4px); }
-  50% { transform: translateX(4px); }
-  75% { transform: translateX(-4px); }
-  100% { transform: translateX(0); }
-}
-
 /* Utility classes */
 .cell-correct {
   animation: flash-green 0.3s ease;
@@ -66,4 +43,12 @@
 
 .cell-hint-highlighted {
   animation: flash-green 0.5s ease;
+}
+
+.cell-solving {
+  animation: pulse-solving 0.3s ease;
+}
+
+.cell-backtrack {
+  animation: flash-backtrack 0.3s ease;
 }

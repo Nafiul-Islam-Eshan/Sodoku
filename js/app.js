@@ -13,6 +13,7 @@ import { ReplaySystem } from "./modules/ReplaySystem.js";
 import { StorageManager } from "./modules/StorageManager.js";
 import { MoveRecorder } from "./modules/MoveRecorder.js";
 import { EventBus } from "./utils/eventBus.js";
+import { Helpers } from "./utils/helpers.js";
 
 // Embedded ThemeManager logic
 const ThemeManager = {
@@ -51,24 +52,18 @@ document.addEventListener("DOMContentLoaded", () => {
   const difficulty = localStorage.getItem("difficulty") || "easy";
 
   // Restore saved state if available
-  let saved = null;
-  try {
-    saved = StorageManager.load("sudokuState");
-  } catch (e) {
-    console.warn("Failed to load saved state:", e);
-  }
-
+  const saved = StorageManager.load("sudokuState");
   let puzzle;
   if (saved && saved.given && saved.solution) {
-    puzzle = { given: saved.given, solution: saved.solution };
+    puzzle = saved;
+    GameEngine.init(puzzle);
+    GameEngine.board = Helpers.clone(saved.board || saved.given);
   } else {
     puzzle = SudokuGenerator.generate(difficulty);
+    GameEngine.init(puzzle);
   }
 
-  // Initialize game
-  GameEngine.init(puzzle);
-
-  // Render board with given mask to distinguish pre-filled cells
+  // Initialize UI
   UIController.renderBoard(GameEngine.board, puzzle.given);
 
   // Start timer
@@ -76,15 +71,20 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // Keyboard input
   KeyboardHandler.init(document.getElementById("board"), (cell, val) => {
-    const row = parseInt(cell.dataset.row);
-    const col = parseInt(cell.dataset.col);
+    const index = [...cell.parentNode.children].indexOf(cell);
+    const row = Math.floor(index / 9);
+    const col = index % 9;
+
+    // Prevent editing given cells
+    if (puzzle.given[row][col] !== null) {
+      Animator.flash(cell, "mistake");
+      return;
+    }
 
     const oldValue = GameEngine.board[row][col];
-
     if (val === null || Validator.isValidMove(GameEngine.board, row, col, val)) {
       GameEngine.board[row][col] = val;
       cell.textContent = val || "";
-      cell.classList.remove("cell-given");
       Animator.flash(cell, val ? "correct" : "");
       MoveRecorder.record(row, col, val, false, oldValue);
       ReplaySystem.recordMove({ row, col, value: val, oldValue });
@@ -101,19 +101,18 @@ document.addEventListener("DOMContentLoaded", () => {
     if (hint) {
       const index = hint.row * 9 + hint.col;
       const cell = document.getElementById("board").children[index];
-      const oldValue = GameEngine.board[hint.row][hint.col];
+      // Don't hint on given cells
+      if (puzzle.given[hint.row][hint.col] !== null) return;
       GameEngine.board[hint.row][hint.col] = hint.value;
       cell.textContent = hint.value;
-      cell.classList.remove("cell-given");
       Animator.flash(cell, "hint");
-      MoveRecorder.record(hint.row, hint.col, hint.value, false, oldValue);
+      MoveRecorder.record(hint.row, hint.col, hint.value, false);
       saveState();
     }
   };
 
   document.getElementById("undoBtn").onclick = () => {
-    if (MoveRecorder.history.length === 0) return;
-    const last = MoveRecorder.history.pop();
+    const last = MoveRecorder.undo();
     if (last) {
       GameEngine.board[last.row][last.col] = last.oldValue || null;
       UIController.renderBoard(GameEngine.board, puzzle.given);
@@ -121,9 +120,36 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   };
 
-  document.getElementById("solveBtn").onclick = () => {
-    Solver.solve(GameEngine.board);
+  // FIXED: Auto-solve with visualization
+  let isSolving = false;
+  document.getElementById("solveBtn").onclick = async () => {
+    if (isSolving) return;
+    isSolving = true;
+    const btn = document.getElementById("solveBtn");
+    btn.disabled = true;
+    btn.textContent = "Solving...";
+
+    const boardDiv = document.getElementById("board");
+    const cells = boardDiv.children;
+
+    await Solver.solveVisual(GameEngine.board, async (row, col, val, isBacktrack) => {
+      const index = row * 9 + col;
+      const cell = cells[index];
+      GameEngine.board[row][col] = val;
+      cell.textContent = val || "";
+      if (isBacktrack) {
+        cell.classList.add("cell-backtrack");
+        setTimeout(() => cell.classList.remove("cell-backtrack"), 200);
+      } else {
+        cell.classList.add("cell-solving");
+        setTimeout(() => cell.classList.remove("cell-solving"), 200);
+      }
+    }, 30);
+
     UIController.renderBoard(GameEngine.board, puzzle.given);
+    btn.disabled = false;
+    btn.textContent = "Auto Solve";
+    isSolving = false;
     saveState();
   };
 
@@ -132,14 +158,16 @@ document.addEventListener("DOMContentLoaded", () => {
   };
 
   // Timer display
-  setInterval(() => {
+  const timerInterval = setInterval(() => {
     const seconds = Math.floor(TimerManager.getTime() / 1000);
     document.getElementById("timer").textContent = `Time: ${seconds}s`;
   }, 1000);
 
   // Score + leaderboard
-  setInterval(() => {
-    const score = ScoreManager.calculate(difficulty, MoveRecorder.history.length, 0, false);
+  const scoreInterval = setInterval(() => {
+    const mistakes = MoveRecorder.history.filter(m => m.wasMistake).length;
+    const hints = MoveRecorder.history.filter(m => m.value && !m.wasMistake).length;
+    const score = ScoreManager.calculate(difficulty, hints, mistakes, false);
     document.getElementById("score").textContent = `Score: ${score}`;
     Leaderboard.add({ playerName: "You", score });
     document.getElementById("leaderboard").textContent =
@@ -150,16 +178,12 @@ document.addEventListener("DOMContentLoaded", () => {
   window.addEventListener("beforeunload", saveState);
 
   function saveState() {
-    try {
-      StorageManager.save("sudokuState", {
-        given: puzzle.given,
-        solution: puzzle.solution,
-        board: GameEngine.board,
-        difficulty,
-        history: MoveRecorder.history
-      });
-    } catch (e) {
-      console.warn("Failed to save state:", e);
-    }
+    StorageManager.save("sudokuState", {
+      given: puzzle.given,
+      solution: puzzle.solution,
+      board: GameEngine.board,
+      difficulty,
+      history: MoveRecorder.history
+    });
   }
 });

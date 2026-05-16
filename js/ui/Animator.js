@@ -1,4 +1,3 @@
-// js/ui/Animator.js
 export const Animator = {
   /**
    * Apply a temporary animation class to a cell.

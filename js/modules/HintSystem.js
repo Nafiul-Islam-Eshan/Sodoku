@@ -1,4 +1,3 @@
-
 export const HintSystem = {
   getHint(board) {
     for (let r = 0; r < 9; r++) {
