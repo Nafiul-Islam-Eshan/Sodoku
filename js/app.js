@@ -12,46 +12,16 @@ import { Leaderboard } from "./modules/Leaderboard.js";
 import { ReplaySystem } from "./modules/ReplaySystem.js";
 import { StorageManager } from "./modules/StorageManager.js";
 import { MoveRecorder } from "./modules/MoveRecorder.js";
+import { ThemeManager } from "./modules/ThemeManager.js";
 import { EventBus } from "./utils/eventBus.js";
 import { Helpers } from "./utils/helpers.js";
 
-// Embedded ThemeManager logic
-const ThemeManager = {
-  themes: ["light", "dark", "minimal", "competitive"],
-
-  setTheme(theme) {
-    if (!this.themes.includes(theme)) {
-      console.warn(`Invalid theme: ${theme}. Defaulting to light.`);
-      theme = "light";
-    }
-    document.documentElement.dataset.theme = theme;
-    localStorage.setItem("theme", theme);
-    EventBus.emit("theme:changed", theme);
-  },
-
-  loadTheme() {
-    const saved = localStorage.getItem("theme");
-    const theme = this.themes.includes(saved) ? saved : "light";
-    document.documentElement.dataset.theme = theme;
-    EventBus.emit("theme:loaded", theme);
-  },
-
-  cycleTheme() {
-    const current = document.documentElement.dataset.theme || "light";
-    const idx = this.themes.indexOf(current);
-    const next = this.themes[(idx + 1) % this.themes.length];
-    this.setTheme(next);
-  }
-};
+// Load theme immediately before DOM loads to prevent FOUC
+ThemeManager.loadTheme();
 
 document.addEventListener("DOMContentLoaded", () => {
-  // Load theme immediately
-  ThemeManager.loadTheme();
-
-  // Load difficulty from index.html selection
   const difficulty = localStorage.getItem("difficulty") || "easy";
 
-  // Restore saved state if available
   const saved = StorageManager.load("sudokuState");
   let puzzle;
   if (saved && saved.given && saved.solution) {
@@ -63,19 +33,14 @@ document.addEventListener("DOMContentLoaded", () => {
     GameEngine.init(puzzle);
   }
 
-  // Initialize UI
   UIController.renderBoard(GameEngine.board, puzzle.given);
-
-  // Start timer
   TimerManager.start();
 
-  // Keyboard input
   KeyboardHandler.init(document.getElementById("board"), (cell, val) => {
     const index = [...cell.parentNode.children].indexOf(cell);
     const row = Math.floor(index / 9);
     const col = index % 9;
 
-    // Prevent editing given cells
     if (puzzle.given[row][col] !== null) {
       Animator.flash(cell, "mistake");
       return;
@@ -95,13 +60,11 @@ document.addEventListener("DOMContentLoaded", () => {
     saveState();
   });
 
-  // Buttons
   document.getElementById("hintBtn").onclick = () => {
     const hint = HintSystem.getHint(GameEngine.board);
     if (hint) {
       const index = hint.row * 9 + hint.col;
       const cell = document.getElementById("board").children[index];
-      // Don't hint on given cells
       if (puzzle.given[hint.row][hint.col] !== null) return;
       GameEngine.board[hint.row][hint.col] = hint.value;
       cell.textContent = hint.value;
@@ -120,7 +83,6 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   };
 
-  // FIXED: Auto-solve with visualization
   let isSolving = false;
   document.getElementById("solveBtn").onclick = async () => {
     if (isSolving) return;
@@ -157,14 +119,12 @@ document.addEventListener("DOMContentLoaded", () => {
     ThemeManager.cycleTheme();
   };
 
-  // Timer display
-  const timerInterval = setInterval(() => {
+  setInterval(() => {
     const seconds = Math.floor(TimerManager.getTime() / 1000);
     document.getElementById("timer").textContent = `Time: ${seconds}s`;
   }, 1000);
 
-  // Score + leaderboard
-  const scoreInterval = setInterval(() => {
+  setInterval(() => {
     const mistakes = MoveRecorder.history.filter(m => m.wasMistake).length;
     const hints = MoveRecorder.history.filter(m => m.value && !m.wasMistake).length;
     const score = ScoreManager.calculate(difficulty, hints, mistakes, false);
@@ -174,7 +134,6 @@ document.addEventListener("DOMContentLoaded", () => {
       "Leaderboard: " + Leaderboard.getTop(3).map(e => `${e.playerName}(${e.score})`).join(", ");
   }, 5000);
 
-  // Persist state before unload
   window.addEventListener("beforeunload", saveState);
 
   function saveState() {

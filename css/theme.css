@@ -1,4 +1,6 @@
-:root[data-theme="light"] {
+/* themes.css - Bulletproof theme variable system */
+
+:root {
   --bg-primary: #ffffff;
   --bg-secondary: #f5f5f5;
   --cell-border: #cccccc;
@@ -8,7 +10,21 @@
   --font-family: 'Inter', sans-serif;
 }
 
-:root[data-theme="dark"] {
+html[data-theme="light"],
+:root[data-theme="light"],
+[data-theme="light"] {
+  --bg-primary: #ffffff;
+  --bg-secondary: #f5f5f5;
+  --cell-border: #cccccc;
+  --cell-given: #333333;
+  --cell-user: #2196f3;
+  --cell-conflict: #f44336;
+  --font-family: 'Inter', sans-serif;
+}
+
+html[data-theme="dark"],
+:root[data-theme="dark"],
+[data-theme="dark"] {
   --bg-primary: #121212;
   --bg-secondary: #1e1e1e;
   --cell-border: #444444;
@@ -18,7 +34,9 @@
   --font-family: 'Inter', sans-serif;
 }
 
-:root[data-theme="minimal"] {
+html[data-theme="minimal"],
+:root[data-theme="minimal"],
+[data-theme="minimal"] {
   --bg-primary: #ffffff;
   --bg-secondary: #ffffff;
   --cell-border: #000000;
@@ -28,7 +46,9 @@
   --font-family: monospace;
 }
 
-:root[data-theme="competitive"] {
+html[data-theme="competitive"],
+:root[data-theme="competitive"],
+[data-theme="competitive"] {
   --bg-primary: #000000;
   --bg-secondary: #111111;
   --cell-border: #ffeb3b;
@@ -38,15 +58,18 @@
   --font-family: 'Arial Black', sans-serif;
 }
 
-/* Apply variables */
 body {
   background-color: var(--bg-primary);
   font-family: var(--font-family);
+  color: var(--cell-given);
+  transition: background-color 0.3s ease, color 0.3s ease;
 }
 
 .cell {
   border: 1px solid var(--cell-border);
   color: var(--cell-user);
+  background-color: var(--bg-primary);
+  transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
 }
 
 .cell-given {
@@ -56,4 +79,19 @@ body {
 
 .cell-conflicting {
   background-color: var(--cell-conflict);
+}
+
+#board {
+  background-color: var(--cell-border);
+}
+
+#controls button {
+  background-color: var(--bg-secondary);
+  color: var(--cell-given);
+  border-color: var(--cell-border);
+}
+
+#controls button:hover:not(:disabled) {
+  background-color: var(--cell-border);
+  color: var(--bg-primary);
 }
